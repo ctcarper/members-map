@@ -1,0 +1,14 @@
+{
+  "buildCommand": "mkdir -p public && cp src/members-map.html public/index.html",
+  "outputDirectory": "public",
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
+    {
+      "src": "/",
+      "dest": "/index.html"
+    }
+  ]
+}

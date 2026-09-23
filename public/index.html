@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Member Map</title>
+
+<!-- Mapbox GL -->
+<script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+<link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+
+<style>
+  body {
+    margin: 0;
+    padding: 0;
+    background: #f7f7f7;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  .map-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+
+  .map-card {
+    width: 100%;
+    max-width: 900px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    background: #fff;
+  }
+
+  .map-header {
+    padding: 16px 20px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+  }
+
+  .map-header h2 {
+    margin: 0;
+    font-size: 18px;
+    color: #212529;
+  }
+
+  #mw-map {
+    width: 100%;
+    height: 500px;
+  }
+
+  .map-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 500px;
+    color: #666;
+    font-size: 14px;
+  }
+
+  .map-error {
+    padding: 20px;
+    background: #f8d7da;
+    color: #721c24;
+    border-radius: 4px;
+    margin: 20px;
+  }
+</style>
+</head>
+
+<body>
+<div class="map-container">
+  <div class="map-card">
+    <div class="map-header">
+      <h2>Member Locations</h2>
+    </div>
+    <div id="mw-map"></div>
+  </div>
+</div>
+
+<script>
+// Your Vercel endpoint (production-ready)
+const VERCEL_ENDPOINT = 'https://sigmasigma.org/api/members';
+
+// Initialize map
+let map;
+const bounds = new mapboxgl.LngLatBounds();
+
+// Start loading
+document.getElementById('mw-map').innerHTML = '<div class="map-loading">Loading members...</div>';
+
+// Fetch member data from your Vercel function
+fetch(VERCEL_ENDPOINT)
+  .then(res => {
+    if (!res.ok) {
+      throw new Error(`API error: ${res.status} ${res.statusText}`);
+    }
+    return res.json();
+  })
+  .then(data => {
+    const members = data.members || [];
+    const mapboxToken = data.mapboxToken;
+
+    if (!mapboxToken) {
+      throw new Error('Mapbox token not available');
+    }
+
+    // Set Mapbox token dynamically
+    mapboxgl.accessToken = mapboxToken;
+
+    if (!members.length) {
+      document.getElementById('mw-map').innerHTML = '<div class="map-error">No members found</div>';
+      return;
+    }
+
+    // Initialize Mapbox map
+    map = new mapboxgl.Map({
+      container: 'mw-map',
+      style: 'mapbox://styles/mapbox/streets-v12',
+      center: [-95, 37],
+      zoom: 4
+    });
+
+    // Add members to map
+    let geocodedCount = 0;
+    members.forEach((member, index) => {
+      if (!member.address) return;
+
+      const address = member.address.replace(/\n/g, ', ');
+      const encodedAddress = encodeURIComponent(address);
+
+      // Geocode address using Mapbox Geocoding API
+      fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodedAddress}.json?access_token=${mapboxToken}`)
+        .then(r => r.json())
+        .then(geo => {
+          if (!geo.features || !geo.features.length) {
+            console.warn(`Could not geocode: ${address}`);
+            return;
+          }
+
+          const [lng, lat] = geo.features[0].center;
+
+          // Add marker to map
+          new mapboxgl.Marker({ color: "#e63946" })
+            .setLngLat([lng, lat])
+            .setPopup(
+              new mapboxgl.Popup({ offset: 25 }).setHTML(
+                `<strong>${member.name || 'Member'}</strong><br><small>${address}</small>`
+              )
+            )
+            .addTo(map);
+
+          // Extend bounds to include this marker
+          bounds.extend([lng, lat]);
+          geocodedCount++;
+
+          // Fit map bounds after all geocodes complete
+          if (geocodedCount === members.length) {
+            map.fitBounds(bounds, { padding: 50 });
+          }
+        })
+        .catch(err => {
+          console.error(`Geocoding error for ${address}:`, err);
+        });
+    });
+
+    // If no members could be geocoded, show error
+    setTimeout(() => {
+      if (geocodedCount === 0) {
+        document.getElementById('mw-map').innerHTML = '<div class="map-error">Error: Could not locate any members on map</div>';
+      }
+    }, 5000);
+  })
+  .catch(err => {
+    console.error('Error fetching members:', err);
+    document.getElementById('mw-map').innerHTML = `<div class="map-error">Error loading map: ${err.message}</div>`;
+  });
+</script>
+
+</body>
+</html>
