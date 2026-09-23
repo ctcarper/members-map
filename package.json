@@ -1,0 +1,24 @@
+{
+  "name": "members-map",
+  "version": "1.0.0",
+  "description": "A project to visualize members on a map using Mapbox.",
+  "main": "src/js/app.js",
+  "scripts": {
+    "start": "live-server src",
+    "build": "echo 'Build step can be added here.'"
+  },
+  "keywords": [
+    "map",
+    "members",
+    "visualization",
+    "mapbox"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "mapbox-gl": "^2.15.0"
+  },
+  "devDependencies": {
+    "live-server": "^1.2.1"
+  }
+}
