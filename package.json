@@ -5,7 +5,7 @@
   "main": "src/js/app.js",
   "scripts": {
     "start": "live-server src",
-    "build": "echo 'Build step can be added here.'"
+    "build": "node build.js"
   },
   "keywords": [
     "map",
